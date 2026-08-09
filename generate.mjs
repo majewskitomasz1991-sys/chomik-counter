@@ -1,31 +1,33 @@
-import { createCanvas, loadImage } from 'canvas'
-import fs from 'fs'
-const data = JSON.parse(fs.readFileSync('./data.json','utf8'))
-const bg = await loadImage('./background.jpg')
-const W = bg.width; const H = bg.height
-const canvas = createCanvas(W, H)
-const ctx = canvas.getContext('2d')
-ctx.drawImage(bg, 0, 0, W, H)
-try{
-  const logo = await loadImage('./logo.png')
-  ctx.save()
-  ctx.beginPath()
-  ctx.arc(70, 70, 58, 0, Math.PI*2)
-  ctx.clip()
-  ctx.drawImage(logo, 8, 8, 125, 125)
-  ctx.restore()
-  ctx.strokeStyle = "#32FF00"
-  ctx.lineWidth = 3
-  ctx.beginPath()
-  ctx.arc(70, 70, 60, 0, Math.PI*2)
-  ctx.stroke()
-}catch(e){}
+import Jimp from 'jimp';
+import fs from 'fs';
 
-ctx.fillStyle = "#32FF00"
-ctx.shadowColor = "#32FF00"
-ctx.shadowBlur = 15
-ctx.font = "bold 44px monospace"
-ctx.fillText(`WYS: ${String(data.views).padStart(5,'0')}`, 165, 58)
-ctx.fillText(`ODW: ${String(data.uniques).padStart(5,'0')}`, 165, 115)
+const data = JSON.parse(fs.readFileSync('./data.json','utf8'));
 
-fs.writeFileSync('./counter.png', canvas.toBuffer('image/png'))
+const bg = await Jimp.read('./background.jpg');
+const logo = await Jimp.read('./logo.png');
+
+const W = bg.bitmap.width;
+const H = bg.bitmap.height;
+
+// logo w koło
+logo.resize(125,125);
+const mask = new Jimp(125,125,0x00000000);
+mask.scan(0,0,125,125, function(x,y,idx){
+  const dx=x-62.5, dy=y-62.5;
+  if(dx*dx+dy*dy<58*58) { this.bitmap.data[idx+3]=255; } 
+});
+logo.mask(mask,0,0);
+
+bg.composite(logo, 8, 8);
+
+// limonkowe napisy - duże
+const font = await Jimp.loadFont(Jimp.FONT_SANS_32_WHITE);
+const greenFont = font;
+bg.print(font, 165, 15, {text: `WYS: ${String(data.views).padStart(5,'0')}`, alignmentX: Jimp.HORIZONTAL_ALIGN_LEFT}, 400, 50);
+bg.print(font, 165, 75, {text: `ODW: ${String(data.uniques).padStart(5,'0')}`, alignmentX: Jimp.HORIZONTAL_ALIGN_LEFT}, 400, 50);
+
+// pomaluj na limonke - filtr
+bg.color([{apply:'tint', params:[{r:50,g:255,b:0}]}]);
+
+await bg.writeAsync('./counter.png');
+console.log('OK BIG');
