@@ -1,6 +1,6 @@
 {
   "type": "module",
   "dependencies": {
-    "jimp": "0.16.13"
+    "sharp": "^0.33.4"
   }
 }
