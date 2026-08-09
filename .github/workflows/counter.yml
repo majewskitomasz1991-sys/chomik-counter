@@ -1,8 +1,8 @@
 name: Counter Update
 on:
-  schedule:
-    - cron: '*/10 * * * *'
   workflow_dispatch:
+  push:
+    branches: [main]
 
 jobs:
   build:
@@ -11,39 +11,12 @@ jobs:
       contents: write
     steps:
       - uses: actions/checkout@v4
-
       - uses: actions/setup-node@v4
         with:
           node-version: 20
-
-      - name: Install deps
-        run: npm install
-
-      - name: Pobierz staty
-        env:
-          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-        run: |
-          curl -s -H "Authorization: token $GH_TOKEN" -H "Accept: application/vnd.github.v3+json" https://api.github.com/repos/${{ github.repository }}/traffic/views > traffic.json || echo '{"count":1247,"uniques":892}' > traffic.json
-          cat traffic.json
-          node -e "
-          const fs=require('fs');
-          try{
-            const t=JSON.parse(fs.readFileSync('traffic.json','utf8'));
-            const d=JSON.parse(fs.readFileSync('data.json','utf8'));
-            if(t.count) d.views = t.count;
-            if(t.uniques) d.uniques = t.uniques;
-            if(d.views < 1) d.views = 1247;
-            if(d.uniques < 1) d.uniques = 892;
-            fs.writeFileSync('data.json', JSON.stringify(d, null, 2));
-          }catch(e){ console.log('err', e) }
-          "
-
-      - name: Generuj obrazek BIG
-        run: node generate.mjs
-
-      - name: Push
-        run: |
-          git config user.name "counter-bot"
-          git config user.email "bot@github.com"
+      - run: node generate.mjs
+      - run: |
+          git config user.name "bot"
+          git config user.email "bot@bot.com"
           git add counter.png data.json
-          git diff --staged --quiet || (git commit -m "update counter BIG" && git push)
+          git diff --staged --quiet || (git commit -m "ok" && git push)
