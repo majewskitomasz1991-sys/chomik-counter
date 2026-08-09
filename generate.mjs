@@ -1,35 +1,31 @@
-import Jimp from 'jimp';
+import sharp from 'sharp';
 import fs from 'fs';
 
 const data = JSON.parse(fs.readFileSync('./data.json','utf8'));
+const views = String(data.views || 1247).padStart(5,'0');
+const uniques = String(data.uniques || 892).padStart(5,'0');
 
-const bg = await Jimp.read('./background.jpg');
-const logo = await Jimp.read('./logo.png');
+const bg = await sharp('./background.jpg').resize(500,150).toBuffer();
+const logo = await sharp('./logo.png').resize(125,125).png().toBuffer();
 
-// logo 125px
-logo.resize(125, 125);
-bg.composite(logo, 8, 8);
+// SVG z dużymi limonkowymi napisami
+const svgText = `
+<svg width="500" height="150">
+  <style>
+    .big { fill: #ADFF2F; font-size: 38px; font-family: Arial Black, sans-serif; font-weight: 900; paint-order: stroke; stroke: black; stroke-width: 6px; stroke-linejoin: round; }
+  </style>
+  <text x="165" y="55" class="big">WYS: ${views}</text>
+  <text x="165" y="110" class="big">ODW: ${uniques}</text>
+</svg>`;
 
-// limonkowy prostokąt pod logo
-const circle = new Jimp(140, 140, 0x00000000);
-circle.scan(0,0,140,140, (x,y,idx)=>{
-  const dx=x-70, dy=y-70;
-  if(Math.sqrt(dx*dx+dy*dy) < 67){
-    circle.bitmap.data[idx]=0;
-    circle.bitmap.data[idx+1]=255;
-    circle.bitmap.data[idx+2]=0;
-    circle.bitmap.data[idx+3]=60;
-  }
-});
-bg.composite(circle, 0, 0);
+const svgBuffer = Buffer.from(svgText);
 
-// DUŻE napisy
-const font = await Jimp.loadFont(Jimp.FONT_SANS_32_WHITE);
-bg.print(font, 165, 20, `WYS: ${String(data.views||1247).padStart(5,'0')}`);
-bg.print(font, 165, 75, `ODW: ${String(data.uniques||892).padStart(5,'0')}`);
+await sharp(bg)
+  .composite([
+    { input: logo, left: 8, top: 12 },
+    { input: svgBuffer, left: 0, top: 0 }
+  ])
+  .png()
+  .toFile('./counter.png');
 
-// filtr na limonke
-bg.color([{apply:'mix', params:['#32FF00', 35]}]);
-
-await bg.writeAsync('./counter.png');
-console.log('BIG DONE');
+console.log('DONE BIG SHARP');
